@@ -265,18 +265,24 @@ Skygear Chat supports real time messaging. A message is the real content of a co
 ### Loading messages from a conversation 
 When users get into the chatroom, you may call [`fetchMessagesWithConversation:limit:beforeTime:order:completion:`](https://docs.skygear.io/ios/chat/reference/latest/Classes/SKYChatExtension.html#/c:objc(cs)SKYChatExtension(im)fetchMessagesWithConversation:limit:beforeTime:order:completion:) to load the messages of the conversation. You can specify the limit of the messages in `limit` and the time constraint for the message in `beforeTime`.
 
+The completion function would get called twice, once from cache and once from server. There is a boolean flag `isCached` in the completion function parameter reflecting if the messages are fetched from local cache or server.
+
 ```swift
 SKYContainer.default().chatExtension?.fetchMessages(
     conversation: conversation,
     limit: 100,
     beforeTime: nil,
     order: nil,
-    completion: { (messages, error) in
+    completion: { (messages, isCached, error) in
         if error != nil {
-            print ("Messages cannot be fetched. " + 
+            print ("Messages cannot be fetched. " +
                    "Error:\(error.localizedDescription)")
         }
-        
+
+        if isCached {
+            print ("Messages fetched from cache")
+        }
+
         print ("Messages fetched")
 })
 ```
@@ -292,20 +298,34 @@ To send a text message, just create a `SKYMessage` and specify the `body` of you
 let message = SKYMessage()
 message.body = "Hello!"
 
-SKYContainer.default().chatExtension?.addMessage(message, 
-    to: conversation) { (message, error) in
+SKYContainer.default().chatExtension?.addMessage(message,
+    to: conversation) { (message, isCached, error) in
         if let err = error {
             print("Send message error: \(err.localizedDescription)")
             return
         }
 
         if message != nil {
+            if isCached {
+                print("Message is saved in cache store")
+            }
+
             print("Send message successful")
         }
 }
 ```
 
-#### Plain Text 
+The send message API would save messages to local cache store. If the messages are failed to save in Skygear server, they are still kept in the local cache store. You may call `fetchUnsentMessagesWithConversationID:completion` to fetch these messages. This would be useful if your app displays unsuccessfully sent messages, even after the app is restarted.
+
+```swift
+SKYContainer.default().chatExtension?.fetchUnsentMessages(
+    conversationID: self.conversation!.recordID().recordName,
+    completion: { (unsentMessages) in
+        print("Unsent messages are fetched")
+    })
+```
+
+#### Plain Text
 
 To send a text message, just create a `SKYMessage` and specify the `body` of your message.
 
