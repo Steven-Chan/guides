@@ -334,7 +334,7 @@ To remove admins from a conversation, you can call [`removeConversationAdmin`](h
 ## Messages
 Skygear Chat supports real time messaging. A message is the real content of a conversation. Skygear Chat supports 2 types of messages, one is plain text, the other one is assets. Assets include files, images, voice message and video.
 
-### Loading messages from a conversation 
+### Loading messages from a conversation
 When users get into the chatroom, you may call [`getMessages`](https://docs.skygear.io/android/chat/reference/latest/io/skygear/plugins/chat/ChatContainer.html#getMessages-io.skygear.plugins.chat.Conversation-int-java.util.Date-java.lang.String-io.skygear.plugins.chat.GetCallback-) to load the messages of the conversation. You can specify the limit of the messages in `limit` and the time constraint for the message in `before`.
 
 ```Java
@@ -344,10 +344,15 @@ ChatContainer chatContainer = ChatContainer.getInstance(skygear);
 chatContainer.getMessages(conversation,
     -1, // -1 as default limit
     null, // Date before
-    new GetCallback<List<Message>>() {
+    new GetMessagesCallback() {
     @Override
     public void onSucc(@Nullable List<Message> messageList) {
-        Log.i("MyApplication", "Messages Retrieved: " + messageList);
+        Log.i("MyApplication", "Messages Retrieved from server: " + messageList);
+    }
+
+    @Override
+    public void onGetCachedResult(@Nullable List<Message> messageList) {
+        Log.i("MyApplication", "Messages Retrieved from cache: " + messageList);
     }
 
     @Override
@@ -371,15 +376,39 @@ chatContainer.sendMessage(conversation,
                           "Hello!",
                           null,
                           null,
-                          new SaveCallback<Message>() {
+                          new SaveMessageCallback() {
     @Override
     public void onSucc(@Nullable Message message) {
         Log.i("MyApplication", "Message Sent: " + message.getBody());
     }
 
     @Override
+    public void onSaveResultCached(@Nullable Message message) {
+        Log.i("MyApplication", "Message Saved in cache: " + message.getBody());
+    }
+
+    @Override
     public void onFail(@NonNull Error error) {
         Log.i("MyApplication", "Message Failed to be sent: " + error.getMessage());
+    }
+});
+```
+
+The send message API would save messages to local cache store. If the messages are failed to save in Skygear server, they are still kept in the local cache store. You may call `getUnsentMessages` to fetch these messages. This would be useful if your app displays unsuccessfully sent messages, even after the app is restarted.
+
+```Java
+Container skygear = Container.defaultContainer(getApplicationContext());
+ChatContainer chatContainer = ChatContainer.getInstance(skygear);
+
+chatContainer.getUnsentMessages(conversation, new GetCallback<List<Message>>() {
+    @Override
+    public void onSucc(@Nullable List<Message> messageList) {
+        Log.i("MyApplication", "Unsent Messages Retrieved: " + messageList);
+    }
+
+    @Override
+    public void onFail(@NonNull Error error) {
+        Log.i("MyApplication", "Failed to get unsent messages: " + error.getMessage());
     }
 });
 ```
@@ -398,10 +427,15 @@ chatContainer.sendMessage(conversation,
                           "Hi! This is a plain text message!",
                           null,
                           null,
-                          new SaveCallback<Message>() {
+                          new SaveMessageCallback() {
     @Override
     public void onSucc(@Nullable Message message) {
         Log.i("MyApplication", "Message Sent: " + message.getBody());
+    }
+
+    @Override
+    public void onSaveResultCached(@Nullable Message message) {
+        Log.i("MyApplication", "Message Saved in cache: " + message.getBody());
     }
 
     @Override
@@ -426,10 +460,15 @@ JSONObject meta = new JSONObject();
 meta.put("textColor", "red"); //custom metadata
 meta.put("isImportant",new Boolean(true)); //custom metadata
 
-chatContainer.sendMessage(conversation, "Message Body", null, meta, new SaveCallback<Message>() {
+chatContainer.sendMessage(conversation, "Message Body", null, meta, new SaveMessageCallback() {
     @Override
     public void onSucc(@Nullable Message message) {
         Log.i("MyApplication", "Message Sent: " + message.getBody());
+    }
+
+    @Override
+    public void onSaveResultCached(@Nullable Message message) {
+        Log.i("MyApplication", "Message Saved in cache: " + message.getBody());
     }
 
     @Override
@@ -452,11 +491,16 @@ chatContainer.sendMessage(conversation,
                           "Hi! This is a message with assets",
                           null,
                           asset,
-                          new SaveCallback<Message>() {
+                          new SaveMessageCallback() {
     @Override
     public void onSucc(@Nullable Message message) {
         Log.i("MyApplication", "Message Sent: " + message.getBody());
         // You can call message.getAsset() to get the asset
+    }
+
+    @Override
+    public void onSaveResultCached(@Nullable Message message) {
+        Log.i("MyApplication", "Message Saved in cache: " + message.getBody());
     }
 
     @Override
@@ -472,10 +516,15 @@ You can edit a message with [`editMessage`](https://docs.skygear.io/android/chat
 ```Java
 Container skygear = Container.defaultContainer(getApplicationContext());
 ChatContainer chatContainer = ChatContainer.getInstance(skygear);
-chatContainer.editMessage(message, "New Body", new SaveCallback<Message>() {
+chatContainer.editMessage(message, "New Body", new SaveMessageCallback() {
     @Override
     public void onSucc(@Nullable Message message) {
         Log.i("MyApplication", "Message Updated: " + message.body);
+    }
+
+    @Override
+    public void onSaveResultCached(@Nullable Message message) {
+        Log.i("MyApplication", "Message Saved in cache: " + message.getBody());
     }
 
     @Override
@@ -561,7 +610,7 @@ Coming soon
 
 ## Receipt
 Skygear Chat provides you with message receipt which includes status and timestamps information.
- 
+
 ### Message status
 You can make use of the following receipt status to indicate your message status.
 
@@ -679,7 +728,7 @@ chatContainer.sendTypingIndicator(conversation, Typing.State.FINISH);
 ```
 
 
-## User online 
+## User online
 Coming soon
 
 ## Best practices
